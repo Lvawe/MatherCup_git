@@ -142,14 +142,14 @@ with torch.no_grad():
     pred_redistributed = model(data)
 
 #计算变化
+from collections import defaultdict
+
 def count_changed_lines(daily_data_original, daily_data_redistributed):
     changed_lines_count = []
     for (date1, original_df), (date2, redistributed_df) in zip(daily_data_original, daily_data_redistributed):
-        merged_df = pd.merge(original_df, redistributed_df, on=["spot1", "spot2", "date"], suffixes=("_original", "_redistributed"))
-        changed_lines = 0
-        for index, row in merged_df.iterrows():
-            if row["amount_original"] != row["amount_redistributed"]:
-                changed_lines += 1
+        original_lines = set((row["spot1"], row["spot2"], row["date"]) for _, row in original_df.iterrows())
+        redistributed_lines = set((row["spot1"], row["spot2"], row["date"]) for _, row in redistributed_df.iterrows())
+        changed_lines = len(original_lines.symmetric_difference(redistributed_lines))
         changed_lines_count.append((date1, changed_lines))
 
     return changed_lines_count
@@ -160,15 +160,15 @@ changed_lines_count = count_changed_lines(daily_data_original, daily_data_redist
 
 def calculate_unable_to_transfer(daily_data_original, daily_data_redistributed, max_capacity):
     unable_to_transfer = 0
+    max_capacity_dict = defaultdict(lambda: max_capacity)
     for date, (original_df_tuple, redistributed_df_tuple) in enumerate(zip(daily_data_original, daily_data_redistributed)):
         _, original_df = original_df_tuple
         _, redistributed_df = redistributed_df_tuple
-        for index, row in original_df.iterrows():
-            if redistributed_df.loc[index, "amount"] > max_capacity:
-                unable_to_transfer += redistributed_df.loc[index, "amount"] - max_capacity
+        for _, row in original_df.iterrows():
+            if redistributed_df.loc[row.name, "amount"] > max_capacity_dict[(row["spot1"], row["spot2"])]:
+                unable_to_transfer += redistributed_df.loc[row.name, "amount"] - max_capacity_dict[(row["spot1"], row["spot2"])]
 
     return unable_to_transfer
-
 
 max_capacity = data_original["amount"].max()
 unable_to_transfer = calculate_unable_to_transfer(daily_data_original, daily_data_redistributed, max_capacity)
