@@ -144,6 +144,7 @@ with torch.no_grad():
 #计算变化
 from collections import defaultdict
 
+# 使用了集合（set）数据结构来存储原始和重新分配的行标识符，避免合并和迭代 DataFrame 的开销
 def count_changed_lines(daily_data_original, daily_data_redistributed):
     changed_lines_count = []
     for (date1, original_df), (date2, redistributed_df) in zip(daily_data_original, daily_data_redistributed):
@@ -158,6 +159,7 @@ daily_data_original = list(data_original.groupby("date"))
 daily_data_redistributed = list(redistributed_cargo.groupby("date"))
 changed_lines_count = count_changed_lines(daily_data_original, daily_data_redistributed)
 
+# 使用了 defaultdict 存储每个（spot1、spot2）对应的最大容量，避免每次迭代 DataFrame 时都进行最大容量的查找操作
 def calculate_unable_to_transfer(daily_data_original, daily_data_redistributed, max_capacity):
     unable_to_transfer = 0
     max_capacity_dict = defaultdict(lambda: max_capacity)
